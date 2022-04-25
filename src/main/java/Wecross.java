@@ -17,10 +17,30 @@ public class Wecross {
     String group1path = "payment.group1.AssurerInterchain";
     String group2path = "payment.group2.AssurerInterchain";
 
+
+    public void init() {
+        try {
+            // 初始化 Service
+            weCrossRPCService = new WeCrossRPCService();
+
+
+            // 初始化Resource
+            weCrossRPC = WeCrossRPCFactory.build(weCrossRPCService);
+
+            weCrossRPC.login("org1-admin", "123456").send(); // 需要有登录态才能进一步操作
+            group1 = ResourceFactory.build(weCrossRPC, group1path);
+            group2 = ResourceFactory.build(weCrossRPC, group2path);
+
+        } catch (Exception e) {
+            System.out.println("Error: " + e);
+        }
+    }
+
+
     public void testRegister() {
         init();
         final int id = 111;
-        final int num = 10;
+        final int num = 500;
         setRegisterCount(group1, 0);
 
         try {
@@ -39,6 +59,7 @@ public class Wecross {
                         System.out.print("count thread over!\nconsumption: ");
                         long end = System.currentTimeMillis();
                         System.out.println(end - start);
+                        System.out.println((end - start) / num);
                         break;
                     }
 
@@ -61,6 +82,104 @@ public class Wecross {
         }
 
     }
+
+
+    public void testDeposite() {
+        init();
+        final int id = 111;
+        final int num = 500;
+
+        register(group1, id);
+
+        try {
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        final long start = System.currentTimeMillis();
+
+        new Thread(new Runnable() {
+            public void run() {
+                while (true) {
+
+                    if (getBalance(group1, id) >= num) {
+                        System.out.print("count thread over!\nconsumption: ");
+                        long end = System.currentTimeMillis();
+                        System.out.println(end - start);
+                        System.out.println((end - start) / num);
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(100);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+        }).start();
+
+        for (int i = 0; i < num; i++) {
+            new Thread(new Runnable() {
+                public void run() {
+                    deposite(group1, id, 1);
+                }
+            }).start();
+        }
+
+    }
+
+    public void testDeduct() {
+        init();
+        final int id = 111;
+        final int num = 500;
+
+        register(group1, id);
+        deposite(group1, id, num + 100);
+        setPremium(group1, id, 1);
+
+        try {
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        final long start = System.currentTimeMillis();
+
+        new Thread(new Runnable() {
+            public void run() {
+                while (true) {
+
+                    if (getBalance(group1, id) < 100) {
+                        System.out.print("count thread over!\nconsumption: ");
+                        long end = System.currentTimeMillis();
+                        System.out.println(end - start);
+                        System.out.println((end - start) / num);
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(100);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+        }).start();
+
+        for (int i = 0; i < num; i++) {
+            new Thread(new Runnable() {
+                public void run() {
+                    deduct(group1, id);
+                }
+            }).start();
+        }
+
+    }
+
 
     public void testRegisterInterchain() {
         init();
@@ -101,6 +220,55 @@ public class Wecross {
             new Thread(new Runnable() {
                 public void run() {
                     registerInterchain(group1, group1path, group2path, id);
+                }
+            }).start();
+        }
+    }
+
+
+    public void testDepositeInterchain() {
+        init();
+        final int id = 111;
+        final int num = 500;
+
+        register(group1, id);
+        deposite(group1, id, num + 10);
+        register(group2, id);
+
+        try {
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        final long start = System.currentTimeMillis();
+
+        new Thread(new Runnable() {
+            public void run() {
+                while (true) {
+
+                    if (getBalance(group2, id) >= num) {
+                        System.out.print("balance thread over!\nconsumption: ");
+                        long end = System.currentTimeMillis();
+                        System.out.println(end - start);
+                        System.out.println((end - start) / num);
+                        break;
+                    }
+
+                    try {
+                        Thread.sleep(100);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+        }).start();
+
+        for (int i = 0; i < num; i++) {
+            new Thread(new Runnable() {
+                public void run() {
+                    depositeInterchain(group1, group1path, group2path, id, 1);
                 }
             }).start();
         }
@@ -228,6 +396,52 @@ public class Wecross {
         }
     }
 
+    public void testUploadData() {
+        final long timeSum = 0;
+        int repeate = 10;
+        int dataSize = 9000; //byte
+
+        init();
+        try {
+            Thread.sleep(3000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        for (int i = 0; i < repeate; i++) {
+            setDataCount(group1, 0);
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            final long start = System.currentTimeMillis();
+            uploadData(group1, dataSize);
+            new Thread(new Runnable() {
+                public void run() {
+                    while (true) {
+
+                        if (getDataCount(group1) >= 1) {
+                            //System.out.print("data count thread over!\nconsumption: ");
+                            long end = System.currentTimeMillis();
+                            System.out.print(end - start);
+                            System.out.print("+");
+                            break;
+                        }
+
+                        try {
+                            Thread.sleep(10);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                }
+            }).start();
+        }
+
+    }
+
     public void run() {
         int id = 111;
         init();
@@ -353,24 +567,6 @@ public class Wecross {
     }
 
 
-    public void init() {
-        try {
-            // 初始化 Service
-            weCrossRPCService = new WeCrossRPCService();
-
-
-            // 初始化Resource
-            weCrossRPC = WeCrossRPCFactory.build(weCrossRPCService);
-
-            weCrossRPC.login("org1-admin", "123456").send(); // 需要有登录态才能进一步操作
-            group1 = ResourceFactory.build(weCrossRPC, group1path);
-            group2 = ResourceFactory.build(weCrossRPC, group2path);
-
-        } catch (Exception e) {
-            System.out.println("Error: " + e);
-        }
-    }
-
     public void register(Resource r, int id) {
         try {
             String[] sendTransactionRet = r.sendTransaction("register", id + "");
@@ -383,7 +579,7 @@ public class Wecross {
     public void setDataCount(Resource r, int _count) {
         try {
             String[] sendTransactionRet = r.sendTransaction("setDataCount", _count + "");
-            System.out.println(r.getPath() + "[setDataCount: count=" + _count + "]");
+            //System.out.println(r.getPath() + "[setDataCount: count=" + _count + "]");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -392,7 +588,7 @@ public class Wecross {
     public int getDataCount(Resource r) {
         try {
             String[] callRet = r.call("getDataCount");
-            System.out.println(r.getPath() + "[getDataCount] " + callRet[0]);
+            //System.out.println(r.getPath() + "[getDataCount] " + callRet[0]);
             return Integer.parseInt(callRet[0]);
         } catch (Exception e) {
             e.printStackTrace();
@@ -469,6 +665,22 @@ public class Wecross {
         return null;
     }
 
+
+    public void uploadData(Resource r, int dataSize) {
+        try {
+            String data = "";
+            for (int i = 0; i < dataSize; i++) {
+                data += "A";
+            }
+
+            String[] sendTransactionRet = r.sendTransaction("addData", "1", "2", data, "", "", "", "", "");
+            //System.out.println(r.getPath() + "[uploadData, data size: " + dataSize + ", " + data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
     public void depositeInterchain(Resource r, String originChainPath, String targetChainPath, int id, int amount) {
         try {
             TransactionResponse transactionResponse = weCrossRPC.sendTransaction(originChainPath, "depositeInterchain", targetChainPath, "depositeFromInterchain", id + "", amount + "", originChainPath, "depositeCallback").send();
@@ -496,5 +708,22 @@ public class Wecross {
             return 0;
         }
     }
+
+    public void setPremium(Resource r, int id, int amount) {
+        try {
+            String[] sendTransactionRet = r.sendTransaction("setPremium", id + "", amount + "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void deduct(Resource r, int id) {
+        try {
+            String[] sendTransactionRet = r.sendTransaction("deduct", id + "");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

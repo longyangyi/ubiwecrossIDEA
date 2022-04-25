@@ -50,16 +50,54 @@ contract AssurerInterchain {
         return args;
     }
 
-    function registerCallback(bool state, string[] memory _result) public
-    returns(string[] memory)
+    function registerCallback(bool state, string[] memory _result) public returns(string[] memory)
     {
         if(state) {
             
         }
         return _result;
     }
+
+
+
+    function getDataInterchain(string memory _path, string memory _method, string memory _id, string memory _timestamp, string memory _callbackPath, string memory _callbackMethod) public
+    returns(string memory)
+    {
+        string[] memory args = new string[](2);
+        args[0] = _id;
+        args[1] = _timestamp;
+
+        return hub.interchainQuery(_path, _method, args, _callbackPath, _callbackMethod);
+    }
+
+    function getDataFromInterchain(string[] memory args) public returns (string[] memory) {
+        data memory d = cars[stringToUint(args[0])].all_data[args[1]];
+	    string[] memory args = new string[](7);
+        //d.timestamp, d.velocity, d.acceleration, d.angle, d.over_speed, d.rapid_acc, d.rapid_turn
+        args[0] = d.timestamp;
+        args[1] = d.velocity;
+        args[2] = d.acceleration;
+        args[3] = d.angle;
+        args[4] = d.over_speed;
+        args[5] = d.rapid_acc;
+        args[6] = d.rapid_turn;
+        return args;
+    }
+
+    function getDataCallback(bool state, string[] memory _result) public
+    returns(string[] memory)
+    {
+        if(state) {
+            getDataInterchainResult = _result;
+        }
+        return _result;
+    }
     
-    
+    string[] getDataInterchainResult;
+    function getInterchainResult() public view returns (string[] memory) {
+        return getDataInterchainResult;
+    }
+
     
     struct data {
         string timestamp;
